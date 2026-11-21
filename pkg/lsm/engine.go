@@ -789,6 +789,11 @@ func (e *Engine) Close() error {
 		logger.Errorf("Warning: failed to save metadata during shutdown: %v\n", err)
 	}
 
+	// Close all SST files so the data directory can be removed afterwards
+	if err := e.levels.Close(); err != nil {
+		logger.Errorf("Warning: failed to close level manager: %v\n", err)
+	}
+
 	e.txnManager.Close()
 	e.wal.Close()
 
