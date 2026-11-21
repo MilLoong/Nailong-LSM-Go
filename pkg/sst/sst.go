@@ -3,11 +3,11 @@ package sst
 import (
 	"encoding/binary"
 	"os"
-	"tiny-lsm-go/pkg/block"
-	"tiny-lsm-go/pkg/cache"
-	"tiny-lsm-go/pkg/config"
-	"tiny-lsm-go/pkg/iterator"
-	"tiny-lsm-go/pkg/utils"
+	"nailong-lsm-go/pkg/block"
+	"nailong-lsm-go/pkg/cache"
+	"nailong-lsm-go/pkg/config"
+	"nailong-lsm-go/pkg/iterator"
+	"nailong-lsm-go/pkg/utils"
 )
 
 // SST represents a Sorted String Table file

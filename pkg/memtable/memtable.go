@@ -2,10 +2,10 @@ package memtable
 
 import (
 	"sync"
-	"tiny-lsm-go/pkg/common"
-	"tiny-lsm-go/pkg/config"
-	"tiny-lsm-go/pkg/iterator"
-	"tiny-lsm-go/pkg/skiplist"
+	"nailong-lsm-go/pkg/common"
+	"nailong-lsm-go/pkg/config"
+	"nailong-lsm-go/pkg/iterator"
+	"nailong-lsm-go/pkg/skiplist"
 )
 
 // MemTable represents the in-memory table component of the LSM-tree

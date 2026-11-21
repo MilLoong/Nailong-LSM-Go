@@ -6,13 +6,13 @@ import (
 	"os"
 	"time"
 
-	"tiny-lsm-go/pkg/common"
-	"tiny-lsm-go/pkg/config"
-	"tiny-lsm-go/pkg/lsm"
+	"nailong-lsm-go/pkg/common"
+	"nailong-lsm-go/pkg/config"
+	"nailong-lsm-go/pkg/lsm"
 )
 
 func main() {
-	fmt.Println("🚀 Tiny-LSM-Go Engine Example")
+	fmt.Println("🚀 nailong-lsm-go Engine Example")
 	fmt.Println("=============================")
 
 	// Create a temporary directory for this example

@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
-	"tiny-lsm-go/pkg/sst"
-	"tiny-lsm-go/pkg/utils"
+	"nailong-lsm-go/pkg/sst"
+	"nailong-lsm-go/pkg/utils"
 )
 
 func main() {

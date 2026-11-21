@@ -5,9 +5,9 @@ import (
 	"log"
 	"time"
 
-	"tiny-lsm-go/pkg/common"
-	"tiny-lsm-go/pkg/config"
-	"tiny-lsm-go/pkg/lsm"
+	"nailong-lsm-go/pkg/common"
+	"nailong-lsm-go/pkg/config"
+	"nailong-lsm-go/pkg/lsm"
 )
 
 func main() {

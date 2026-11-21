@@ -3,8 +3,8 @@ package block
 import (
 	"encoding/binary"
 	"fmt"
-	"tiny-lsm-go/pkg/iterator"
-	"tiny-lsm-go/pkg/logger"
+	"nailong-lsm-go/pkg/iterator"
+	"nailong-lsm-go/pkg/logger"
 )
 
 // Block represents a data block in SST files

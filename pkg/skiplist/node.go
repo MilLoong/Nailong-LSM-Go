@@ -1,7 +1,7 @@
 package skiplist
 
 import (
-	"tiny-lsm-go/pkg/iterator"
+	"nailong-lsm-go/pkg/iterator"
 )
 
 // Node represents a node in the skip list

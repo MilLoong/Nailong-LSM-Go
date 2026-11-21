@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"tiny-lsm-go/pkg/config"
-	"tiny-lsm-go/pkg/redis"
+	"nailong-lsm-go/pkg/config"
+	"nailong-lsm-go/pkg/redis"
 )
 
 // RedisServer represents a simple Redis server implementation

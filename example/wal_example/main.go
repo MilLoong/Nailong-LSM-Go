@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"tiny-lsm-go/pkg/wal"
+	"nailong-lsm-go/pkg/wal"
 )
 
 func main() {

@@ -1,9 +1,9 @@
 package lsm
 
 import (
-	"tiny-lsm-go/pkg/common"
-	"tiny-lsm-go/pkg/utils"
-	"tiny-lsm-go/pkg/wal"
+	"nailong-lsm-go/pkg/common"
+	"nailong-lsm-go/pkg/utils"
+	"nailong-lsm-go/pkg/wal"
 )
 
 // GetManager returns the transaction manager

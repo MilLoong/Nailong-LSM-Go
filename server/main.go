@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"tiny-lsm-go/pkg/config"
-	"tiny-lsm-go/pkg/logger"
+	"nailong-lsm-go/pkg/config"
+	"nailong-lsm-go/pkg/logger"
 )
 
 func main() {

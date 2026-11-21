@@ -2,8 +2,8 @@ package memtable
 
 import (
 	"fmt"
-	"tiny-lsm-go/pkg/config"
-	"tiny-lsm-go/pkg/iterator"
+	"nailong-lsm-go/pkg/config"
+	"nailong-lsm-go/pkg/iterator"
 )
 
 // FlushResult represents the result of flushing a MemTable to storage

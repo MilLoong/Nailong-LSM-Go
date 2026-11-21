@@ -3,7 +3,7 @@ package skiplist
 import (
 	"math/rand"
 	"time"
-	"tiny-lsm-go/pkg/iterator"
+	"nailong-lsm-go/pkg/iterator"
 )
 
 const (

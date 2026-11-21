@@ -10,9 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"tiny-lsm-go/pkg/common"
-	"tiny-lsm-go/pkg/utils"
-	"tiny-lsm-go/pkg/wal"
+	"nailong-lsm-go/pkg/common"
+	"nailong-lsm-go/pkg/utils"
+	"nailong-lsm-go/pkg/wal"
 )
 
 // IsolationLevel represents the transaction isolation level

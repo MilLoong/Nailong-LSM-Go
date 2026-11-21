@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"tiny-lsm-go/pkg/config"
-	"tiny-lsm-go/pkg/logger"
-	"tiny-lsm-go/pkg/lsm"
+	"nailong-lsm-go/pkg/config"
+	"nailong-lsm-go/pkg/logger"
+	"nailong-lsm-go/pkg/lsm"
 )
 
 // RedisWrapper provides Redis-compatible interface on top of LSM engine

@@ -1,177 +1,96 @@
-# Tiny-LSM-Go
+# Nailong-LSM-Go
 
-<div align="center">
-  <img src="./doc/logo1-compact.png" alt="Tiny-LSM Logo" style="width: 100%; max-width: 300px;">
-</div>
+Nailong-LSM-Go 是一个 **单机键值** 存储引擎，存储结构是 LSM Tree  
+它是 [Nailong-LSM](https://github.com/MilLoong/Nailong-LSM) 的 Go 实现，包路径是 `nailong-lsm-go/pkg`
 
-[![Go](https://img.shields.io/badge/Go-1.21+-blue)](https://golang.org)
-[![MIT license](https://img.shields.io/github/license/max0x7ba/atomic_queue)](./LICENSE)
-![Version Badge](https://img.shields.io/badge/version-v0.1-red)
+构建工具是 Go modules，在仓库根目录执行 `go build ./...` 编译，`go test ./...` 跑测试，`go run ./server` 启动 Redis 兼容服务，默认端口 `6379`。
 
-`Tiny-LSM-Go` is a Go implementation of a simple key-value database from scratch, using LSM-tree as the storage engine. This project is a port of the original [tiny-lsm](https://github.com/Vanilla-Beauty/tiny-lsm) C++ implementation, designed for educational purposes to help understand LSM-tree data structures and storage engine internals.
+## 概述 📒
 
-## ✨ Features
+- 🌐 **引擎：** 写入先进内存表，刷盘后成为不可变的 SST，再按层归并
+- 🔐 **事务：** 用事务号做多版本并发控制，默认隔离级别是读已提交
+- 🧾 **恢复：** 提交前先写预写日志，进程崩溃后重放已提交事务
+- 🧱 **缓存：** 数据块以 LRU-K 留在内存
+- 🔌 **接口：** Go 的 `Engine`，以及一组常用 Redis 命令
 
-- **LSM-Tree Storage Engine**: Complete implementation with MemTable, SST files, and compaction
-- **MVCC Transactions**: Multi-version concurrency control with configurable isolation levels
-- **Write-Ahead Logging (WAL)**: Ensures data durability and crash recovery
-- **Configurable Block Cache**: LRU-K cache implementation for better performance
-- **Bloom Filters**: Reduces disk I/O for non-existent keys
-- **Iterator Support**: Range queries and prefix scans
-- **TOML Configuration**: Flexible configuration management
+## 致谢 🙏
 
-## 🏗️ Architecture
+本仓库是 [Nailong-LSM](https://github.com/MilLoong/Nailong-LSM) 的 Go 版本。Nailong-LSM 从 Vanilla-Beauty 的 [Tiny-LSM](https://github.com/Vanilla-Beauty/tiny-lsm) 演进而来，原项目的实验划分、组件边界和 LSM 主体实现是这里的基础。
 
-The project follows a layered architecture similar to LevelDB:
+原项目参考了：
 
-```
-┌─────────────────────────────┐
-│         LSM Engine          │
-├─────────────────────────────┤
-│      Transaction Layer      │
-├─────────────────────────────┤
-│    MemTable + WAL Layer     │
-├─────────────────────────────┤
-│      SST + Cache Layer      │
-├─────────────────────────────┤
-│      Storage Layer          │
-└─────────────────────────────┘
-```
+- [mini-lsm](https://github.com/skyzh/mini-lsm)
+- [tinykv](https://github.com/talent-plan/tinykv)
+- [leveldb](https://github.com/google/leveldb)
 
-### Core Components
+实验文档见 [Tiny-LSM Lab](https://vanilla-beauty.github.io/tiny-lsm/book/)。
 
-- **SkipList**: In-memory data structure for MemTable
-- **MemTable**: Active and frozen memory tables
-- **SST (Sorted String Table)**: On-disk storage format
-- **Block Cache**: Caches frequently accessed data blocks
-- **WAL**: Write-ahead log for durability
-- **Transaction Manager**: Handles MVCC and isolation levels
-- **Compaction**: Background process to optimize storage
+## 未完成部分 🚧
 
-## 🚀 Quick Start
+- **组提交：** `WAL.Log` 在调用线程里写出并 `os.File.Sync`，没有后台批量刷盘
+- **提交后不落盘：** `Commit` 末尾的 `Flush` 只往 `checkCh` 塞一个通知，真正写 SST 的是 200ms 轮询的 `flushWorker`
+- **可串行化：** `detectConflicts` 只比较全局读事务号 `GlobalReadTxnID`，没有范围扫描和幻读判断
+- **合并去重：** 合并按全部版本读入，同一个 key 的历史版本和删除标记一起写进新 SST
+- **扫描：** 合并迭代器不跳过删除标记，调用方要自己用 `IsDeleted` 过滤
+- **事务结束标记：** 提交时往内存表写一条 key 和 value 都为空的记录占位，刷盘时跳过
+- **空值：** `Delete` 用空 value 当墓碑，`Get` 也把空 value 当成删除，空字符串无法作为 value 存下
+- **事务状态文件：** `syncTxnStatus` 把活跃事务表写进 `committed_txns.json`，重启时却按已提交表读回来，判断哪些事务要重放时会落到错的一边
+- **恢复检查点：** `wal.Recover` 的检查点固定传 0，每次都从第一个 WAL 文件开始重放，重放出来的记录只进内存表
+- **WAL 清理：** `cleanWalWorker` 只看文件里的事务是否还在活跃表，不看这些记录是否已经写进 SST
+- **大 value：** 没有 VLog 分离存储，value 全部留在 SST
+- **Redis：** 只覆盖常用命令。字段名、链表元素和集合成员都在一个字符串里用 `|` 拼接，元素里再出现 `|` 时无法拆开
 
-### Installation
+## 项目结构 📁
 
-```bash
-git clone https://github.com/Vanilla-Beauty/tiny-lsm-go
-cd tiny-lsm-go
-go mod tidy
-```
-
-### Basic Usage
-
-```go
-package main
-
-import (
-    "fmt"
-    "log"
-    
-    "tiny-lsm-go/pkg/lsm"
-)
-
-func main() {
-    // Create LSM instance
-    db, err := lsm.New("data")
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer db.Close()
-
-    // Put data
-    err = db.Put("key1", "value1")
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Get data
-    value, found, err := db.Get("key1")
-    if err != nil {
-        log.Fatal(err)
-    }
-    if found {
-        fmt.Printf("key1: %s\n", value)
-    }
-
-    // Delete data
-    err = db.Delete("key1")
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Range iteration
-    iter := db.NewIterator()
-    defer iter.Close()
-    
-    for iter.SeekToFirst(); iter.Valid(); iter.Next() {
-        fmt.Printf("%s: %s\n", iter.Key(), iter.Value())
-    }
-
-    // Transaction example
-    txn := db.NewTransaction()
-    defer txn.Rollback()
-
-    txn.Put("tx_key", "tx_value")
-    value, found, err = txn.Get("tx_key")
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    err = txn.Commit()
-    if err != nil {
-        log.Fatal(err)
-    }
-}
+```text
+pkg/
+  skiplist/        跳表
+  memtable/        内存表与刷盘
+  block/           数据块
+  cache/           块缓存
+  sst/             SST 与块索引、布隆过滤器
+  iterator/        合并、串接、选择迭代器
+  lsm/             引擎、合并、事务
+  wal/             预写日志与记录格式
+  redis/           Redis 命令到键值的编码
+  config/          配置
+  common/          公共类型
+  utils/           文件、布隆过滤器、游标
+  logger/          日志
+server/            基于 net 的 RESP 服务
+example/           引擎、Redis、WAL 示例
+tool/              SST 与 WAL 解析工具
+config.toml        容量、块大小、布隆过滤器、WAL、Redis 前缀
 ```
 
-## 📖 Documentation
+## 主要功能 ✨
 
-### Configuration
+写入、读取、合并、事务、恢复、块缓存和 Redis 编码的做法和 Nailong-LSM 一样，Go 版只在这些地方不同：
 
-The system uses TOML configuration files. See `config.toml` for available options:
+- **事务：** 默认隔离级别是读已提交，`BeginWithIsolation` 可以指定其余三级。事务上的读写都走 `Engine`，用 `PutWithTxn` 和 `GetWithTxn` 带事务参数
+- **后台协程：** 刷盘、合并、WAL 清理、事务状态回写各起一个 `goroutine`，退出时用 `context` 收尾
+- **块缓存：** 用 `container/heap` 维护最近 K 次访问时间
 
-```toml
-[lsm.core]
-LSM_TOL_MEM_SIZE_LIMIT = 67108864    # 64MB total memory limit
-LSM_PER_MEM_SIZE_LIMIT = 4194304     # 4MB per MemTable
-LSM_BLOCK_SIZE = 32768               # 32KB block size
-LSM_SST_LEVEL_RATIO = 4              # Level size ratio
+## 架构 🏗️
 
-[lsm.cache]
-LSM_BLOCK_CACHE_CAPACITY = 1024      # Block cache capacity
-LSM_BLOCK_CACHE_K = 8                # LRU-K parameter
+链路和 Nailong-LSM 一样：`客户端 -> RedisServer -> RedisWrapper -> Engine`。`Engine` 持有 `LevelManager`、`MemTable` 和 `TransactionManager`，`TransactionManager` 里再存回引擎的指针。Go 直接调用时从 `Engine` 进入，不经过前面两层。
 
-[bloom_filter]
-BLOOM_FILTER_EXPECTED_SIZE = 65536
-BLOOM_FILTER_EXPECTED_ERROR_RATE = 0.1
+```mermaid
+flowchart TD
+  client[客户端] --> server[RedisServer]
+  server --> wrapper[RedisWrapper]
+  wrapper --> lsm
+
+  subgraph lsm [Engine]
+    engine[Engine]
+    tran[TransactionManager]
+    engine --- tran
+  end
+
+  engine --> mem[MemTable]
+  engine --> sst[多层 SST]
+  engine --> cache[BlockCache]
+  tran --> wal[WAL]
 ```
 
-## 🧪 Testing
-
-Run the test suite:
-
-```bash
-go test ./...
-```
-
-Run benchmarks:
-
-```bash
-go test -bench=. ./...
-```
-
-## 📦 Tools
-While debugging and analyzing Tiny-LSM-Go database files, you can use the tools provided in the `tool` directory. The usaage can be found [here](tool/Readme.md)
-
-## 🤝 Contributing
-
-This is an educational project. Contributions are welcome! Please feel free to submit issues and pull requests.
-
-## 📚 References
-- [Original Tiny-LSM C++ Implementation](https://github.com/Vanilla-Beauty/tiny-lsm)
-- [Mini-LSM Tutorial](https://skyzh.github.io/mini-lsm/)
-- [LevelDB](https://github.com/google/leveldb)
-
-## 📜 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+组件职责和 Nailong-LSM 一一对应，Go 版把网络层从 Asio 换成 `net` 加 `bufio.Reader`，每条连接一个 `goroutine`，所有连接共用一个 `RedisWrapper`，读写命令由它的一把 `sync.RWMutex` 分开。

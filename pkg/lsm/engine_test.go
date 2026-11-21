@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"tiny-lsm-go/pkg/config"
+	"nailong-lsm-go/pkg/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

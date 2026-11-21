@@ -2,7 +2,7 @@ package skiplist
 
 import (
 	"sync"
-	"tiny-lsm-go/pkg/iterator"
+	"nailong-lsm-go/pkg/iterator"
 )
 
 // SkipListIterator implements the Iterator interface for skip lists

@@ -7,7 +7,7 @@ package lsm
 // 	"path/filepath"
 // 	"sync"
 
-// 	"tiny-lsm-go/pkg/wal"
+// 	"nailong-lsm-go/pkg/wal"
 // )
 
 // // TransactionPersistence handles transaction state persistence
