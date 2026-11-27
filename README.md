@@ -5,13 +5,22 @@ Nailong-LSM-Go 是一个 **单机键值** 存储引擎，存储结构是 LSM Tre
 
 构建工具是 Go modules，在仓库根目录执行 `go build ./...` 编译，`go test ./...` 跑测试，`go run ./server` 启动 Redis 兼容服务，默认端口 `6379`。
 
+测试规模、读路径对照和复跑命令见 [测试与性能记录](doc/test-results.md)。
+
 ## 概述 📒
 
 - 🌐 **引擎：** 写入先进内存表，刷盘后成为不可变的 SST，再按层归并
 - 🔐 **事务：** 用事务号做多版本并发控制，默认隔离级别是读已提交
 - 🧾 **恢复：** 提交前先写预写日志，进程崩溃后重放已提交事务
-- 🧱 **缓存：** 数据块以 LRU-K 留在内存
+- 🧱 **缓存：** 以访问次数优先、最近访问时间为次序淘汰 SST 数据块
 - 🔌 **接口：** Go 的 `Engine`，以及一组常用 Redis 命令
+
+## 技术栈 🧰
+
+- **语言与工具：** Go（`go.mod` 声明 1.21）、Go Modules、`testing`、Testify
+- **存储引擎：** LSM Tree、跳表 MemTable、分块 SST、分层 Compaction、Bloom Filter、堆式块缓存（`container/heap`）
+- **事务与后台任务：** MVCC、WAL、goroutine、`context`、`sync`
+- **服务与配置：** 标准库 `net` 提供 TCP 服务，使用 RESP 兼容部分 Redis 命令；BurntSushi/toml 解析配置，Logrus 记录日志
 
 ## 致谢 🙏
 
@@ -94,3 +103,20 @@ flowchart TD
 ```
 
 组件职责和 Nailong-LSM 一一对应，Go 版把网络层从 Asio 换成 `net` 加 `bufio.Reader`，每条连接一个 `goroutine`，所有连接共用一个 `RedisWrapper`，读写命令由它的一把 `sync.RWMutex` 分开。
+
+## 与 C++ 版对比
+
+<table>
+  <thead><tr><th>项目</th><th>C++ 版</th><th>Go 版</th></tr></thead>
+  <tbody>
+    <tr><td>抗扫描：预读 4 次</td><td>0/8</td><td>8/8</td></tr>
+    <tr><td>抗扫描：预读 7 次</td><td>8/8</td><td>8/8</td></tr>
+    <tr><td>1 路点读</td><td>77.7 万次/秒</td><td>122.5 万次/秒</td></tr>
+    <tr><td>4 路点读</td><td>96.9 万次/秒</td><td>332.0 万次/秒</td></tr>
+    <tr><td>8 路点读</td><td>78.8 万次/秒</td><td>456.9 万次/秒</td></tr>
+    <tr><td>16 路点读</td><td>115.1 万次/秒</td><td>463.1 万次/秒</td></tr>
+    <tr><td>32 路点读</td><td>120.2 万次/秒</td><td>480.0 万次/秒</td></tr>
+  </tbody>
+</table>
+
+抗扫描：32 块容量，预热 8 个热块，插入 128 个一次性块后回查。点读：同机 WSL 2，内存表全命中，4,096 个键、128 字节值，取三轮吞吐中位数。

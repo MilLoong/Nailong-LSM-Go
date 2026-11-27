@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TinyLSM C++ / Go 对照</title>
+<style>
+  body { font: 16px/1.55 system-ui, sans-serif; max-width: 1024px; margin: 2rem auto; padding: 0 1rem; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: .65rem; border: 1px solid #99a1ab; text-align: left; vertical-align: top; }
+  thead { background: #e9edf2; color: #17212c; }
+  pre { padding: 1rem; overflow: auto; border: 1px solid #99a1ab; }
+</style>
+<h1>TinyLSM C++ / Go 对照</h1>
+<p>2026-11-25 · Windows/amd64 · C++：本地 Tiny-LSM <code>5267aba</code>，MinGW g++ 16.1.0、<code>-O2</code> · Go：Tiny-LSM-Go 工作树，基线 <code>ff38f7b</code>，Go 1.24.5</p>
+<table>
+  <thead><tr><th scope="col">指标</th><th scope="col">C++ TinyLSM</th><th scope="col">Go TinyLSM</th><th scope="col">证据与口径</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">预热各读 4 次后，扫描结束的热块命中</th><td><strong>0/8</strong></td><td><strong>8/8</strong></td><td>同一条访问轨迹，直接调用两边的真实块缓存</td></tr>
+    <tr><th scope="row">预热各读 7 次后，扫描结束的热块命中</th><td><strong>8/8</strong></td><td><strong>8/8</strong></td><td>首次插入也计作访问，此时 C++ 热块达到 K=8</td></tr>
+    <tr><th scope="row">缓存淘汰</th><td>K=8；不足 K 次优先淘汰，同组按最近或倒数第 K 次访问淘汰</td><td>先淘汰访问记录较少的项，打平时淘汰最久未访问的项；构造器上限 32</td><td>源码对照：两边配置里的 K 同为 8，但 Go 当前构造器不使用该配置</td></tr>
+    <tr><th scope="row">重开 SST 后的 Bloom</th><td>按 <code>footer_off - bloom_offset</code> 读取过滤器</td><td>使用 <code>metaOffset - bloomOffset</code>，正常布局下差值为负，不加载过滤器</td><td>源码对照，不是耗时测量</td></tr>
+    <tr><th scope="row">预热后单线程点读，命中 / 范围内未命中</th><td>未测</td><td>598 / 552 µs/op</td><td>沿用此前 4096 键、128 字节值、重开预热后的三轮中位数；不计算 C++ / Go 倍数</td></tr>
+    <tr><th scope="row">16 路并发内存点读</th><td>未测</td><td><strong>826 万次/秒</strong>，为单路的 7.10 倍</td><td>Go 公开 <code>Engine.Get</code>；不涉及 SST、写入或网络</td></tr>
+  </tbody>
+</table>
+<h2>Go 并发点读实测</h2>
+<p>i5-13500H，Go 1.24.5，GOMAXPROCS=16。预装 4,096 键、128 字节值，确认没有 SST。每档三轮，每轮 1,048,576 次随机查询，逐条校验返回值；15 轮全部通过，共 15,728,640 次查询。吞吐包含结果校验，不含预装和预热。</p>
+<table>
+  <thead><tr><th scope="col">并发 goroutine</th><th scope="col">吞吐中位数（万次/秒）</th><th scope="col">三轮范围（万次/秒）</th><th scope="col">相对单路</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">1</th><td>116.2</td><td>111.2–116.4</td><td>1.00×</td></tr>
+    <tr><th scope="row">4</th><td>418.5</td><td>404.9–426.9</td><td>3.60×</td></tr>
+    <tr><th scope="row">8</th><td>698.3</td><td>689.2–718.7</td><td>6.01×</td></tr>
+    <tr><th scope="row">16</th><td>825.7</td><td>792.5–873.2</td><td>7.10×</td></tr>
+    <tr><th scope="row">32</th><td>849.2</td><td>677.7–870.8</td><td>7.31×</td></tr>
+  </tbody>
+</table>
+<p>32 路比 16 路仅多约 2.8% 中位吞吐，波动更大，因此以 16 路作为简历数字。不报告 p95/p99：首次逐次采样在此机器上大量读数为 0，计时分辨率不足。C++ 尚未跑同口径端到端测试，不计算跨版本倍数。</p>
+<p><strong>简历表述：</strong>为 Go LSM 键值引擎建立 1–32 路并发读基准；内存表全命中负载下，16 路随机点读达到 826 万次/秒（单路的 7.1 倍，三轮中位数）。</p>
+<pre><code>Set-Location bench/compare
+go test -run '^TestConcurrentReadThroughput$' -v -count=1 -cpu=16</code></pre>
+<h2>缓存实验怎么读</h2>
+<p>两边均使用 32 块容量，插入 8 个热块、逐块预热，然后插入 128 个不同的新块，最后重读原来的 8 块。低预热下，C++ 中热块未达到 K，仍和一次性块同属优先淘汰组；Go 按访问次数区分两者。达到 K 后，两边在这条轨迹上均保住热块。这是策略行为对照，不是语言性能排名，也不包含磁盘 I/O。</p>
+<h2>复跑缓存对照</h2>
+<p>在 Go 仓库根目录运行；C++ 只编译块缓存和实验驱动，不修改 C++ 仓库，也不需要构建完整引擎。</p>
+<pre><code>$cpp = 'C:/code/MyProject/Tiny-LSM'
+$exe = Join-Path $env:TEMP ('tiny-cache-' + [guid]::NewGuid() + '.exe')
+g++ -std=c++20 -O2 "-I$cpp/include" bench/compare/cpp/cache_scan.cpp "$cpp/src/block/block_cache.cpp" -o $exe
+if ($LASTEXITCODE -eq 0) { &amp; $exe }
+go test ./pkg/cache -run '^TestBlockCacheScanResistance$' -v -count=1</code></pre>
+</html>
