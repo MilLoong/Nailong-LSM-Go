@@ -104,7 +104,7 @@ flowchart TD
 
 组件职责和 Nailong-LSM 一一对应，Go 版把网络层从 Asio 换成 `net` 加 `bufio.Reader`，每条连接一个 `goroutine`，所有连接共用一个 `RedisWrapper`，读写命令由它的一把 `sync.RWMutex` 分开。
 
-## 与 C++ 版对比
+## 与 C++ 版对比 📊
 
 <table>
   <thead><tr><th>项目</th><th>C++ 版</th><th>Go 版</th></tr></thead>
